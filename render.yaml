@@ -4,7 +4,7 @@ services:
     name: stemsplit-backend
     env: docker
     dockerfilePath: ./Dockerfile.render
-    plan: starter # Requires basic plan for RAM (Spleeter needs ~2GB)
+    plan: free # WARNING: Free tier has 512MB RAM. Spleeter might crash on large files.
     envVars:
       - key: PORT
         value: 3001
