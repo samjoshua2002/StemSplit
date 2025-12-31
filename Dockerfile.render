@@ -27,7 +27,7 @@ COPY server/ server/
 
 # 5. Environment Config
 ENV PORT=3001
-ENV WORKER_URL=http://localhost:8000
+ENV WORKER_URL=http://127.0.0.1:8000
 # CLIENT_URL will be provided by Render env var
 
 # 6. Startup Script

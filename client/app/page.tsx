@@ -53,7 +53,10 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(errorData.error || errorData.details?.detail || 'Upload failed');
+        const errorMessage = errorData.details
+          ? (typeof errorData.details === 'string' ? errorData.details : JSON.stringify(errorData.details))
+          : (errorData.error || 'Upload failed');
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
