@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+torch
+torchaudio
+torchcodec
+demucs
+einops
+julius
+diffq
+dora-search
+tqdm
+openunmix
+soundfile
+supabase

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Generated content
+processed/
+uploads/
+.next/
+dist/
+build/
+
+# System
+.DS_Store
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# Backend
+*.pyc
