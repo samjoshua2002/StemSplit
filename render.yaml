@@ -1,0 +1,15 @@
+services:
+  # 1. The Backend (Node + Python + Shared Disk)
+  - type: web
+    name: stemsplit-backend
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: starter # Requires basic plan for RAM (Spleeter needs ~2GB)
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: WORKER_URL
+        value: http://localhost:8000
+      - key: MODEL_NAME
+        value: htdemucs
+      # You must add CLIENT_URL manually after deploying the frontend (e.g., https://your-vercel-app.vercel.app)

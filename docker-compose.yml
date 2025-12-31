@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  client:
+    build: 
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - server
+
+  server:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - WORKER_URL=http://worker:8000
+      - CLIENT_URL=http://localhost:3000
+    volumes:
+      - ./uploads:/uploads
+      - ./processed:/processed
+    depends_on:
+      - worker
+
+  worker:
+    build: ./worker
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - MODEL_NAME=htdemucs
+    volumes:
+      - ./uploads:/uploads
+      - ./processed:/processed

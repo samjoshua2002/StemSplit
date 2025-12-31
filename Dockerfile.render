@@ -1,0 +1,42 @@
+FROM python:3.9-slim
+
+# 1. Install System Dependencies (FFmpeg, Node.js, etc.)
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    curl \
+    libsndfile1 \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 2. Setup Worker (Python) dependencies
+COPY worker/requirements.txt worker/requirements.txt
+RUN pip install --no-cache-dir -r worker/requirements.txt
+
+# 3. Setup Server (Node.js) dependencies
+COPY server/package*.json server/
+WORKDIR /app/server
+RUN npm install
+WORKDIR /app
+
+# 4. Copy Source Code
+COPY worker/ worker/
+COPY server/ server/
+
+# 5. Environment Config
+ENV PORT=3001
+ENV WORKER_URL=http://localhost:8000
+# CLIENT_URL will be provided by Render env var
+
+# 6. Startup Script
+# We run both the Python worker (background) and Node server (foreground)
+RUN echo "#!/bin/bash\n\
+cd worker && uvicorn main:app --port 8000 --host 0.0.0.0 > ../worker.log 2>&1 &\n\
+cd server && npm start\n\
+" > start.sh && chmod +x start.sh
+
+EXPOSE 3001
+
+CMD ["./start.sh"]
