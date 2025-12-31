@@ -4,10 +4,12 @@ const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
-const PORT = 3001;
-const WORKER_URL = 'http://localhost:8000';
+const PORT = process.env.PORT || 3001;
+const WORKER_URL = process.env.WORKER_URL || 'http://localhost:8000';
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
 // Configuration
 const UPLOAD_DIR = path.resolve(__dirname, '../uploads');
@@ -18,7 +20,10 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (!fs.existsSync(PROCESSED_DIR)) fs.mkdirSync(PROCESSED_DIR, { recursive: true });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: CLIENT_URL,
+    methods: ['GET', 'POST']
+}));
 app.use(express.json());
 
 // 1. Static file serving (for downloading stems)
@@ -76,9 +81,13 @@ app.post('/upload', upload.single('audio'), async (req, res) => {
         // The worker uses 'htdemucs' model by default
         const modelName = 'htdemucs';
 
+        const protocol = req.protocol;
+        const host = req.get('host');
+        const baseUrl = `${protocol}://${host}`;
+
         const stems = workerData.stems.map(stemFile => ({
             name: stemFile,
-            url: `http://localhost:${PORT}/downloads/${modelName}/${folderName}/${stemFile}`
+            url: `${baseUrl}/downloads/${modelName}/${folderName}/${stemFile}`
         }));
 
         res.json({

@@ -13,3 +13,4 @@ tqdm
 openunmix
 soundfile
 supabase
+python-dotenv

@@ -3,12 +3,17 @@ from pydantic import BaseModel
 import subprocess
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
 # Directories
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 PROCESSED_DIR = Path(__file__).parent.parent / "processed"
+
+MODEL_NAME = os.getenv("MODEL_NAME", "htdemucs")
 
 # Ensure directories exist
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -42,7 +47,7 @@ async def separate_audio(request: SeparationRequest):
         
         cmd = [
             "demucs",
-            "-n", "htdemucs",
+            "-n", MODEL_NAME,
             "-o", str(PROCESSED_DIR),
             str(input_path)
         ]
@@ -58,9 +63,9 @@ async def separate_audio(request: SeparationRequest):
         
         print(f"Demucs output: {result.stdout}")
         
-        # Demucs outputs to: PROCESSED_DIR/htdemucs/<filename_without_ext>/
+        # Demucs outputs to: PROCESSED_DIR/<model_name>/<filename_without_ext>/
         filename_no_ext = input_path.stem
-        output_folder = PROCESSED_DIR / "htdemucs" / filename_no_ext
+        output_folder = PROCESSED_DIR / MODEL_NAME / filename_no_ext
         
         if not output_folder.exists():
             raise HTTPException(

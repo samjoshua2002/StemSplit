@@ -45,7 +45,8 @@ export default function Home() {
     formData.append('audio', file);
 
     try {
-      const response = await fetch('http://localhost:3001/upload', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
