@@ -11,6 +11,7 @@ interface Stem {
 
 interface MultiTrackEditorProps {
     stems: Stem[];
+    songName?: string;
 }
 
 interface TrackState {
@@ -38,7 +39,7 @@ const STEM_COLORS: Record<string, string> = {
     default: '#4ECDC4' // turquoise
 };
 
-export default function MultiTrackEditor({ stems }: MultiTrackEditorProps) {
+export default function MultiTrackEditor({ stems, songName = 'Unknown Track' }: MultiTrackEditorProps) {
     const [tracks, setTracks] = useState<TrackState[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -235,6 +236,26 @@ export default function MultiTrackEditor({ stems }: MultiTrackEditorProps) {
         setTracks(newTracks);
     };
 
+    const skipBackward = useCallback(() => {
+        const newTime = Math.max(0, currentTime - 10);
+        tracks.forEach(track => {
+            if (track.wavesurfer) {
+                track.wavesurfer.setTime(newTime);
+            }
+        });
+        setCurrentTime(newTime);
+    }, [currentTime, tracks]);
+
+    const skipForward = useCallback(() => {
+        const newTime = Math.min(duration, currentTime + 10);
+        tracks.forEach(track => {
+            if (track.wavesurfer) {
+                track.wavesurfer.setTime(newTime);
+            }
+        });
+        setCurrentTime(newTime);
+    }, [duration, currentTime, tracks]);
+
     const togglePlay = () => {
         if (tracks.length === 0) return;
 
@@ -259,11 +280,35 @@ export default function MultiTrackEditor({ stems }: MultiTrackEditorProps) {
         tracks.forEach(t => t.wavesurfer?.setTime(time));
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    const formatTime = (time: number) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = Math.floor(time % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Spacebar or Media Play/Pause
+            if (e.code === 'Space' || e.key === 'MediaPlayPause') {
+                e.preventDefault(); // Prevent scrolling
+                togglePlay();
+            }
+            // Media Next
+            if (e.key === 'MediaTrackNext') {
+                e.preventDefault();
+                skipForward();
+            }
+            // Media Previous
+            if (e.key === 'MediaTrackPrevious') {
+                e.preventDefault();
+                skipBackward();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [togglePlay, skipForward, skipBackward]); // Dependencies must be included
 
     // Handle completed recording
     const handleRecordingComplete = async (audioBlob: Blob, duration: number) => {
@@ -310,47 +355,98 @@ export default function MultiTrackEditor({ stems }: MultiTrackEditorProps) {
     return (
         <div className="w-full bg-white dark:bg-black rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[700px] border border-gray-200 dark:border-gray-800">
 
-            {/* Header */}
-            <div className="h-20 bg-white/80 dark:bg-black/80 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm px-8 flex items-center justify-between sticky top-0 z-20">
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <button
-                            onClick={togglePlay}
-                            className="w-14 h-14 rounded-full flex items-center justify-center bg-black hover:bg-gray-800 text-white transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95"
-                        >
-                            {isPlaying ? (
-                                <div className="flex gap-1">
-                                    <div className="w-1.5 h-4 bg-white rounded-sm"></div>
-                                    <div className="w-1.5 h-4 bg-white rounded-sm"></div>
-                                </div>
-                            ) : (
-                                <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
-                            )}
-                        </button>
-                        {isPlaying && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4">
-                                <div className="animate-ping absolute w-full h-full rounded-full bg-purple-400 opacity-25"></div>
+            {/* New Header Design */}
+            <div className="h-24 bg-white/90 dark:bg-black/90 border-b border-gray-200 dark:border-gray-800 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+
+                {/* Left: Song Details */}
+                <div className="w-1/3 flex items-center gap-4 overflow-hidden">
+                    <div className="relative group cursor-help">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800 shadow-sm">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        {/* Tooltip */}
+                        <div className="absolute top-12 left-0 w-64 p-4 bg-gray-900 text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 shadow-xl">
+                            <p className="font-bold text-gray-300 uppercase tracking-wider mb-1">Current Track</p>
+                            <p className="font-medium text-white">{songName}</p>
+                            <div className="mt-2 pt-2 border-t border-gray-700 flex justify-between">
+                                <span className="text-gray-500">Duration</span>
+                                <span className="text-gray-300">{formatTime(duration)}</span>
                             </div>
-                        )}
+                        </div>
                     </div>
 
-                    <div className="flex flex-col">
-                        <div className="text-xs text-gray-400 dark:text-gray-500 font-bold tracking-wider uppercase">Master Output</div>
-                        <div className="text-3xl font-bold text-gray-900 dark:text-white font-mono tracking-tighter">
-                            {formatTime(currentTime)} <span className="text-gray-300 dark:text-gray-600 text-xl">/ {formatTime(duration)}</span>
+                    <div className="flex-1 overflow-hidden relative h-10 flex items-center">
+                        <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-4">
+                            <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{songName}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-sm font-medium text-gray-500">{stems.length} Stems</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{songName}</span>
                         </div>
                     </div>
                 </div>
 
-                {soloActive && (
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-50 border border-yellow-200 shadow-sm">
-                        <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
-                        <span className="text-yellow-700 text-sm font-bold tracking-wide">SOLO MODE</span>
-                    </div>
-                )}
+                {/* Center: Playback Controls */}
+                <div className="w-1/3 flex flex-col items-center justify-center -mt-1">
+                    <div className="flex items-center gap-6 mb-1">
+                        {/* Skip -10s */}
+                        <button
+                            onClick={skipBackward}
+                            className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                            title="-10 Seconds"
+                        >
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                            </svg>
+                        </button>
 
+                        {/* Play/Pause Button */}
+                        <button
+                            onClick={togglePlay}
+                            className="w-16 h-16 rounded-full flex items-center justify-center bg-black dark:bg-white text-white dark:text-black hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl z-10"
+                        >
+                            {isPlaying ? (
+                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-7 h-7 ml-1 fill-current" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            )}
+                        </button>
+
+                        {/* Skip +10s */}
+                        <button
+                            onClick={skipForward}
+                            className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                            title="+10 Seconds"
+                        >
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Timer */}
+                    <div className="font-mono text-sm font-medium text-gray-400 dark:text-gray-500 tracking-wider">
+                        <span className="text-gray-900 dark:text-white/90">{formatTime(currentTime)}</span>
+                        <span className="mx-1 opacity-50">/</span>
+                        <span>{formatTime(duration)}</span>
+                    </div>
+                </div>
+
+                {/* Right: Tools & Solo */}
+                <div className="w-1/3 flex items-center justify-end gap-3">
+                    {soloActive && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-400/10 border border-yellow-400/20 animate-pulse">
+                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
+                            <span className="text-yellow-600 dark:text-yellow-400 text-xs font-bold uppercase tracking-wide">Solo Active</span>
+                        </div>
+                    )}
+                </div>
 
             </div>
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import MultiTrackEditor from '@/components/MultiTrackEditor';
 import { useTheme } from '@/components/ThemeProvider';
-import BuildAnimation from '@/components/BuildAnimation';
+import EditorSkeleton from '@/components/EditorSkeleton';
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -187,10 +187,10 @@ export default function Home() {
         {/* Main Area - Editor (col-8) */}
         <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-gray-50 dark:bg-black">
           {isProcessing ? (
-            <BuildAnimation />
+            <EditorSkeleton />
           ) : stems.length > 0 ? (
             <div className="w-full max-w-[1400px] mx-auto">
-              <MultiTrackEditor stems={stems} />
+              <MultiTrackEditor stems={stems} songName={file?.name || 'Untitled Project'} />
             </div>
           ) : (
             <div className="h-full flex items-center justify-center">
