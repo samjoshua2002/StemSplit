@@ -77,14 +77,19 @@ async def separate_audio(request: SeparationRequest):
         final_output_base.mkdir(parents=True, exist_ok=True)
         final_output = final_output_base / filename_no_ext
 
+        print(f"Checking original_output: {original_output} (exists: {original_output.exists()})")
+        print(f"Sub-dir: {sub_dir}")
+
         if original_output.exists() and str(sub_dir) != ".":
             # Move the folder to the user-specific directory
+            print(f"Moving {original_output} to {final_output}")
             if final_output.exists():
                 import shutil
                 shutil.rmtree(final_output)
             original_output.rename(final_output)
             output_folder = final_output
         else:
+            print(f"Keeping original output folder: {original_output}")
             output_folder = original_output
 
         if not output_folder.exists():

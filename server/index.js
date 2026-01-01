@@ -33,15 +33,19 @@ app.use('/downloads', express.static(PROCESSED_DIR));
 // Multer Storage Configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
+        console.log('Multer destination req.body:', req.body);
         // Use normalized email or userId or 'guest'
-        let subDir = 'guest';
-        if (req.body.userEmail) {
-            subDir = req.body.userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
-        } else if (req.body.userId) {
-            subDir = req.body.userId;
+        let subDir = req.query.subDir || 'guest';
+        if (!req.query.subDir) {
+            if (req.body.userEmail) {
+                subDir = req.body.userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+            } else if (req.body.userId) {
+                subDir = req.body.userId;
+            }
         }
 
         const userDir = path.join(UPLOAD_DIR, subDir);
+        console.log(`Saving upload to: ${userDir}`);
         if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
         cb(null, userDir);
     },
@@ -69,11 +73,13 @@ app.post('/upload', upload.single('audio'), async (req, res) => {
     const filename = req.file.filename;
 
     // Normalize subfolder
-    let subDir = 'guest';
-    if (userEmail) {
-        subDir = userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
-    } else if (userId) {
-        subDir = userId;
+    let subDir = req.query.subDir || 'guest';
+    if (!req.query.subDir) {
+        if (userEmail) {
+            subDir = userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+        } else if (userId) {
+            subDir = userId;
+        }
     }
 
     console.log(`File uploaded: ${filename} for user: ${subDir}`);

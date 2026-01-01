@@ -44,6 +44,7 @@ export async function POST(req: Request) {
         return response;
     } catch (error: any) {
         console.error('Registration error:', error);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+        const errorMessage = error.errors ? Object.values(error.errors).map((err: any) => err.message).join(', ') : error.message;
+        return NextResponse.json({ error: errorMessage || 'Server error' }, { status: 500 });
     }
 }

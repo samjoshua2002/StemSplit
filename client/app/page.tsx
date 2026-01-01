@@ -79,13 +79,14 @@ export default function Home() {
     setError(null);
 
     const formData = new FormData();
-    formData.append('audio', file);
     formData.append('userId', user.id);
     formData.append('userEmail', user.email);
+    formData.append('audio', file);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/upload`, {
+      const normalizedEmail = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const response = await fetch(`${apiUrl}/upload?subDir=${normalizedEmail}`, {
         method: 'POST',
         body: formData,
       });
