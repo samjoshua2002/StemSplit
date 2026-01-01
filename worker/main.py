@@ -64,9 +64,29 @@ async def separate_audio(request: SeparationRequest):
         print(f"Demucs output: {result.stdout}")
         
         # Demucs outputs to: PROCESSED_DIR/<model_name>/<filename_without_ext>/
-        filename_no_ext = input_path.stem
-        output_folder = PROCESSED_DIR / MODEL_NAME / filename_no_ext
+        # But we want: PROCESSED_DIR/<model_name>/<subDir>/<filename_without_ext>/
         
+        filename_no_ext = input_path.stem
+        sub_dir = Path(request.filename).parent
+        
+        # Original destination created by demucs
+        original_output = PROCESSED_DIR / MODEL_NAME / filename_no_ext
+        
+        # Target destination with subDir
+        final_output_base = PROCESSED_DIR / MODEL_NAME / sub_dir
+        final_output_base.mkdir(parents=True, exist_ok=True)
+        final_output = final_output_base / filename_no_ext
+
+        if original_output.exists() and str(sub_dir) != ".":
+            # Move the folder to the user-specific directory
+            if final_output.exists():
+                import shutil
+                shutil.rmtree(final_output)
+            original_output.rename(final_output)
+            output_folder = final_output
+        else:
+            output_folder = original_output
+
         if not output_folder.exists():
             raise HTTPException(
                 status_code=500, 

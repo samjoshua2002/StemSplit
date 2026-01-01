@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: "Upload a song to isolate vocals, drums, bass, and more using AI",
 };
 
+import { AuthProvider } from "@/components/AuthContext";
+import ClientLayout from "@/components/ClientLayout";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,9 +31,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <ClientLayout>
+              {children}
+            </ClientLayout>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

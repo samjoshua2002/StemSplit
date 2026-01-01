@@ -33,10 +33,19 @@ app.use('/downloads', express.static(PROCESSED_DIR));
 // Multer Storage Configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, UPLOAD_DIR);
+        // Use normalized email or userId or 'guest'
+        let subDir = 'guest';
+        if (req.body.userEmail) {
+            subDir = req.body.userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+        } else if (req.body.userId) {
+            subDir = req.body.userId;
+        }
+
+        const userDir = path.join(UPLOAD_DIR, subDir);
+        if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
+        cb(null, userDir);
     },
     filename: (req, file, cb) => {
-        // Keep original filename but ensure uniqueness if needed (skipping complexity for MVP)
         cb(null, Date.now() + '-' + file.originalname);
     }
 });
@@ -56,39 +65,50 @@ app.post('/upload', upload.single('audio'), async (req, res) => {
         return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    const { userId, userEmail } = req.body;
     const filename = req.file.filename;
-    console.log(`File uploaded: ${filename}`);
+
+    // Normalize subfolder
+    let subDir = 'guest';
+    if (userEmail) {
+        subDir = userEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+    } else if (userId) {
+        subDir = userId;
+    }
+
+    console.log(`File uploaded: ${filename} for user: ${subDir}`);
 
     try {
         // 3. Call Python Worker to start separation
-        // Default to 2 stems (vocals, accompaniment)
+        // Note: The worker needs to know the correct base path if we change it.
+        // Current logic assumes files are in UPLOAD_DIR.
+        // We might need to pass the relative path from UPLOAD_DIR.
+        const relativeFilePath = path.join(subDir, filename);
+
         const response = await axios.post(`${WORKER_URL}/separate`, {
-            filename: filename,
+            filename: relativeFilePath,
             stems: 2
         });
 
         const workerData = response.data;
 
-        // Demucs (htdemucs) outputs to: PROCESSED_DIR/htdemucs/<filename_without_ext>/
-        // calls return output_folder in workerData.output_folder, but let's be robust
-        // The worker returns 'stems' list (filenames) and 'output_folder'
-
-        // We need to serve the correct path. 
-        // Our static serve is app.use('/downloads', express.static(PROCESSED_DIR));
-        // So the URL should be /downloads/htdemucs/<filename_no_ext>/<stem>
-
         const folderName = path.parse(filename).name;
-        // The worker uses 'htdemucs' model by default
         const modelName = 'htdemucs';
 
         const protocol = req.protocol;
         const host = req.get('host');
         const baseUrl = `${protocol}://${host}`;
 
-        const stems = workerData.stems.map(stemFile => ({
-            name: stemFile,
-            url: `${baseUrl}/downloads/${modelName}/${folderName}/${stemFile}`
-        }));
+        // Stems in workerData are filenames
+        const stems = workerData.stems.map(stemFile => {
+            // Path structure in processed: htdemucs/<subDir>/<filename_no_ext>/<stem>
+            const relativePath = `${modelName}/${subDir}/${folderName}/${stemFile}`;
+
+            return {
+                name: stemFile,
+                url: `${baseUrl}/downloads/${relativePath}`
+            };
+        });
 
         res.json({
             status: 'success',
@@ -98,8 +118,7 @@ app.post('/upload', upload.single('audio'), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Worker error:', error.message);
-        // If worker fails, we might want to return an error or status
+        console.error('Worker error:', error.response?.data || error.message);
         res.status(500).json({
             error: 'Processing failed',
             details: error.response ? error.response.data : error.message
