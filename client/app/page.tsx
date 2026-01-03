@@ -13,6 +13,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [stems, setStems] = useState<any[]>([]);
   const [currentProjectName, setCurrentProjectName] = useState('Untitled Project');
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isPendingUpload, setIsPendingUpload] = useState(false);
@@ -34,11 +35,22 @@ export default function Home() {
       const project = e.detail;
       setStems(project.stems);
       setCurrentProjectName(project.name);
+      setCurrentProjectId(project._id); // Track ID
       setFile(null); // Clear pending file
     };
 
     window.addEventListener('project-selected', handleProjectSelect);
     return () => window.removeEventListener('project-selected', handleProjectSelect);
+  }, []);
+
+  // Handle auth dialog request from Sidebar
+  useEffect(() => {
+    const handleAuthRequest = (e: any) => {
+      if (e.detail?.mode) setAuthMode(e.detail.mode);
+      setIsAuthDialogOpen(true);
+    };
+    window.addEventListener('open-auth-dialog', handleAuthRequest);
+    return () => window.removeEventListener('open-auth-dialog', handleAuthRequest);
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,6 +114,7 @@ export default function Home() {
       const data = await response.json();
       setStems(data.stems);
       setCurrentProjectName(file.name);
+      setCurrentProjectId(`temp-${Date.now()}`); // Force remount for new project
       setIsProcessing(false);
 
       // Save to project history
@@ -114,6 +127,9 @@ export default function Home() {
           stems: data.stems,
         }),
       });
+
+      // Notify Sidebar for auto-refresh
+      window.dispatchEvent(new Event('project-list-updated'));
 
     } catch (err: any) {
       console.error(err);
@@ -159,11 +175,11 @@ export default function Home() {
                   New Project
                 </button>
               </div>
-              <MultiTrackEditor stems={stems} songName={currentProjectName} />
+              <MultiTrackEditor key={currentProjectId || 'default'} stems={stems} songName={currentProjectName} />
             </div>
           ) : (
             <div className="h-full flex items-center justify-center max-w-2xl mx-auto">
-              <div className="w-full space-y-8 bg-white dark:bg-gray-900 p-10 rounded-[3rem] shadow-2xl border border-gray-100 dark:border-gray-800 backdrop-blur-xl">
+              <div className="w-full space-y-8 p-10 backdrop-blur-xl">
                 <div className="text-center">
                   <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-3">
                     Stem<span className="text-purple-600 dark:text-purple-400">Split</span>

@@ -148,6 +148,10 @@ export default function MultiTrackEditor({ stems, songName = 'Unknown Track' }: 
                 }
             });
 
+            ws.on('error', (err) => {
+                console.error('WaveSurfer Error:', err);
+            });
+
             track.wavesurfer = ws;
         });
 
@@ -155,7 +159,16 @@ export default function MultiTrackEditor({ stems, songName = 'Unknown Track' }: 
         isReadyRef.current = true;
 
         return () => {
-            initializedTracks.forEach(t => t.wavesurfer?.destroy());
+            initializedTracks.forEach(t => {
+                if (t.wavesurfer) {
+                    try {
+                        t.wavesurfer.pause();
+                        t.wavesurfer.destroy();
+                    } catch (e) {
+                        console.error('Error cleaning up wavesurfer:', e);
+                    }
+                }
+            });
             cancelAnimationFrame(rafRef.current);
         };
     }, [tracks.length, stems]);
@@ -353,99 +366,146 @@ export default function MultiTrackEditor({ stems, songName = 'Unknown Track' }: 
     };
 
     return (
-        <div className="w-full bg-white dark:bg-black rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[700px] border border-gray-200 dark:border-gray-800">
+        <div className="w-full  rounded-2xl overflow-hidden  flex flex-col h-[700px] ">
 
-            {/* New Header Design */}
-            <div className="h-24 bg-white/90 dark:bg-black/90 border-b border-gray-200 dark:border-gray-800 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+            {/* Logic Pro X Inspired Header */}
+            <div className="h-24 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30 bg-white/70 dark:bg-gray-900/70">
 
-                {/* Left: Song Details */}
+                {/* Left: Enhanced Song Details */}
                 <div className="w-1/3 flex items-center gap-4 overflow-hidden">
-                    <div className="relative group cursor-help">
-                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 border border-purple-100 dark:border-purple-800 shadow-sm">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                    <div className="relative group">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 dark:from-purple-600/20 dark:to-blue-600/20 flex items-center justify-center backdrop-blur-sm">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                                </svg>
+                            </div>
                         </div>
-                        {/* Tooltip */}
-                        <div className="absolute top-12 left-0 w-64 p-4 bg-gray-900 text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 shadow-xl">
-                            <p className="font-bold text-gray-300 uppercase tracking-wider mb-1">Current Track</p>
-                            <p className="font-medium text-white">{songName}</p>
-                            <div className="mt-2 pt-2 border-t border-gray-700 flex justify-between">
-                                <span className="text-gray-500">Duration</span>
-                                <span className="text-gray-300">{formatTime(duration)}</span>
+
+                        {/* Enhanced Tooltip */}
+                        <div className="absolute top-14 left-0 w-72 p-4 bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-300 uppercase tracking-wider text-[10px] mb-1">Now Playing</p>
+                                    <p className="font-semibold text-white text-sm truncate max-w-[180px]">{songName}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-400">Duration</span>
+                                    <span className="font-mono text-gray-300">{formatTime(duration)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-400">Stems</span>
+                                    <span className="font-mono text-gray-300">{stems.length}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-400">Status</span>
+                                    <span className="font-mono text-emerald-400">{isPlaying ? '▶ Playing' : '⏸ Paused'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-hidden relative h-10 flex items-center">
-                        <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-4">
-                            <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{songName}</span>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-sm font-medium text-gray-500">{stems.length} Stems</span>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">{songName}</span>
+                    <div className="flex-1 overflow-hidden relative h-12 flex items-center">
+                        <div className="absolute whitespace-nowrap animate-marquee flex items-center gap-6">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent tracking-tight">
+                                    {songName}
+                                </span>
+                                <div className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">{stems.length} Stems</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+
+                                <div className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+                                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">{stems.length} Stems</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Center: Playback Controls */}
-                <div className="w-1/3 flex flex-col items-center justify-center -mt-1">
-                    <div className="flex items-center gap-6 mb-1">
-                        {/* Skip -10s */}
+                {/* Center: Professional Timer & Controls */}
+                <div className="w-1/3 flex flex-col items-center justify-center">
+                    {/* Logic Pro Style Timer Display */}
+                    <div className="mb-3 px-6 py-2 rounded-xl bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 backdrop-blur-sm">
+                        <div className="font-mono text-2xl font-bold tracking-wider">
+                            <span className="text-gray-900 dark:text-white/95">{formatTime(currentTime)}</span>
+                            <span className="mx-2 text-gray-400 dark:text-gray-600">:</span>
+                            <span className="text-gray-600 dark:text-gray-400">{formatTime(duration)}</span>
+                        </div>
+                    </div>
+
+                    {/* Refined Playback Controls */}
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={skipBackward}
-                            className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                            className="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white transition-all duration-200"
                             title="-10 Seconds"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
                             </svg>
                         </button>
 
-                        {/* Play/Pause Button */}
                         <button
                             onClick={togglePlay}
-                            className="w-16 h-16 rounded-full flex items-center justify-center bg-black dark:bg-white text-white dark:text-black hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl z-10"
+                            className="relative w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 dark:from-white dark:to-gray-300 text-white dark:text-gray-900 hover:scale-105 active:scale-95 transition-all duration-300 shadow-xl group"
                         >
                             {isPlaying ? (
-                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                                </svg>
+                                <>
+                                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                    </svg>
+                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 to-gray-800 dark:from-white dark:to-gray-300 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
+                                </>
                             ) : (
-                                <svg className="w-7 h-7 ml-1 fill-current" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
+                                <>
+                                    <svg className="w-7 h-7 ml-1 fill-current" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 to-gray-800 dark:from-white dark:to-gray-300 opacity-0 group-hover:opacity-20 blur-md transition-opacity"></div>
+                                </>
                             )}
                         </button>
 
-                        {/* Skip +10s */}
                         <button
                             onClick={skipForward}
-                            className="p-2 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                            className="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white transition-all duration-200"
                             title="+10 Seconds"
                         >
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                             </svg>
                         </button>
                     </div>
-
-                    {/* Timer */}
-                    <div className="font-mono text-sm font-medium text-gray-400 dark:text-gray-500 tracking-wider">
-                        <span className="text-gray-900 dark:text-white/90">{formatTime(currentTime)}</span>
-                        <span className="mx-1 opacity-50">/</span>
-                        <span>{formatTime(duration)}</span>
-                    </div>
                 </div>
 
-                {/* Right: Tools & Solo */}
+                {/* Right: Status Indicators */}
                 <div className="w-1/3 flex items-center justify-end gap-3">
                     {soloActive && (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-400/10 border border-yellow-400/20 animate-pulse">
-                            <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                            <span className="text-yellow-600 dark:text-yellow-400 text-xs font-bold uppercase tracking-wide">Solo Active</span>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-400/10 to-orange-400/5 backdrop-blur-sm">
+                            <div className="relative">
+                                <div className="w-2 h-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 animate-pulse"></div>
+                                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 opacity-40 animate-ping"></div>
+                            </div>
+                            <span className="text-yellow-600 dark:text-yellow-400 text-xs font-bold uppercase tracking-wider">Solo</span>
                         </div>
                     )}
+
+                    {/* Additional Status Indicator */}
+                    <div className="px-3 py-2 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/30 dark:to-gray-900/30 backdrop-blur-sm">
+                        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                            {isPlaying ? 'Playing' : 'Stopped'}
+                        </span>
+                    </div>
                 </div>
 
             </div>
